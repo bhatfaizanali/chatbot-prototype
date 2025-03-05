@@ -1,0 +1,35 @@
+{
+  "name": "ksa-ecommerce-chatbot",
+  "version": "1.0.0",
+  "description": "AI-powered e-commerce chatbot for KSA market with Arabic support",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "chatbot",
+    "arabic",
+    "ecommerce",
+    "saudi",
+    "ksa",
+    "ai",
+    "nlp"
+  ],
+  "author": "Faizan Bhat",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.5.0",
+    "boxen": "^5.1.2",
+    "chalk": "^4.1.2",
+    "dotenv": "^16.3.1",
+    "marked": "^4.3.0",
+    "marked-terminal": "^6.1.0",
+    "readline-sync": "^1.4.10",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
