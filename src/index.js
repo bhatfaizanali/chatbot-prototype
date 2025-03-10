@@ -1,5 +1,5 @@
 /**
- * KSA E-commerce Chatbot Prototype
+ * KSA E-commerce Chatbot with OpenAI Integration
  * 
  * A Node.js CLI demonstration of an AI-powered customer support chatbot
  * optimized for Saudi Arabian e-commerce with Arabic language support.
@@ -77,14 +77,17 @@ async function startChat() {
     });
 
     // Display welcome header with Saudi-themed styling
-    console.log(boxen(chalk.green.bold('KSA E-commerce AI Chatbot - POC'),
+    console.log(boxen(chalk.green.bold('KSA E-commerce AI Chatbot - OpenAI Powered'),
         { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'green' }));
 
     // Welcome message
     const welcome = getWelcomeMessage(argv.lang);
     console.log(marked(welcome));
 
-    const conversationHistory = [];
+    // Initialize conversation history with a welcome message
+    const conversationHistory = [
+        { role: "assistant", content: welcome.trim() }
+    ];
 
     // Helper function for prompting
     const prompt = (query) => new Promise((resolve) => rl.question(query, resolve));
@@ -104,81 +107,70 @@ async function startChat() {
             break;
         }
 
-        // Detect language
-        const lang = detectLanguage(userInput);
-
         // Update conversation history
         conversationHistory.push({ role: "user", content: userInput });
 
-        // Get response from LLM
+        // Show "thinking" indicator
         process.stdout.write(chalk.blue.bold('Chatbot: '));
-        process.stdout.write(chalk.gray('Thinking... '));
+        const thinkingIndicator = chalk.gray('Thinking... ');
+        process.stdout.write(thinkingIndicator);
 
-        const response = await queryLLM(userInput, conversationHistory);
-        process.stdout.write('\r' + ' '.repeat(30) + '\r'); // Clear "Thinking..." text
+        try {
+            // Get response from LLM using OpenAI
+            const response = await queryLLM(userInput, conversationHistory);
 
+            // Clear the "thinking" indicator
+            process.stdout.write('\r' + ' '.repeat(30) + '\r');
 
-        // Special handling for human handoff
-        if (response === "HUMAN_HANDOFF_REQUIRED") {
+            // Special handling for human handoff
+            if (response === "HUMAN_HANDOFF_REQUIRED") {
+                const lang = detectLanguage(userInput);
+                const escalationMsg = lang === "ar"
+                    ? "جاري تحويلك إلى موظف خدمة العملاء..."
+                    : "Transferring you to a human agent...";
+
+                console.log(chalk.yellow.bold('System: ') + escalationMsg);
+
+                const agentMsg = lang === "ar"
+                    ? "مرحبًا، أنا محمد من خدمة العملاء في لين ماركت. كيف يمكنني مساعدتك اليوم؟"
+                    : "Hello, this is Mohammed from Lean Market customer service. How may I assist you today?";
+
+                console.log(chalk.magenta.bold('Human Agent: ') + agentMsg);
+
+                const finalResponse = await prompt(chalk.green.bold('You: '));
+
+                const thankYouMsg = lang === "ar"
+                    ? "شكراً لرسالتك. سأقوم بفحص هذه المشكلة على الفور وسأعود إليك قريباً!"
+                    : "Thank you for your message. I'll look into this right away and get back to you soon!";
+
+                console.log(chalk.magenta.bold('Human Agent: ') + thankYouMsg);
+
+                rl.close();
+                break;
+            } else {
+                console.log(chalk.blue.bold('Chatbot: '));
+                console.log(marked(response));
+
+                // Add response to conversation history
+                conversationHistory.push({ role: "assistant", content: response });
+            }
+        } catch (error) {
+            // Handle errors gracefully
+            console.error("Error:", error.message);
+
             const lang = detectLanguage(userInput);
-            const escalationMsg = lang === "ar"
-                ? "جاري تحويلك إلى موظف خدمة العملاء..."
-                : "Transferring you to a human agent...";
+            const errorMessage = lang === "ar"
+                ? "عذرًا، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى."
+                : "Sorry, there was an error processing your request. Please try again.";
 
-            console.log(chalk.yellow.bold('System: ') + escalationMsg);
-
-            const agentMsg = lang === "ar"
-                ? "مرحبًا، أنا محمد من خدمة العملاء في لين ماركت. كيف يمكنني مساعدتك اليوم؟"
-                : "Hello, this is Mohammed from Lean Market customer service. How may I assist you today?";
-
-            console.log(chalk.magenta.bold('Human Agent: ') + agentMsg);
-
-            const finalResponse = await prompt(chalk.green.bold('You: '));
-
-            const thankYouMsg = lang === "ar"
-                ? "شكراً لرسالتك. سأقوم بفحص هذه المشكلة على الفور وسأعود إليك قريباً!"
-                : "Thank you for your message. I'll look into this right away and get back to you soon!";
-
-            console.log(chalk.magenta.bold('Human Agent: ') + thankYouMsg);
-
-            rl.close();
-            return; // Exit the loop
-        } else {
-            console.log(chalk.blue.bold('Chatbot: '));
-            console.log(marked(response));
-
-            conversationHistory.push({ role: "assistant", content: response });
-        }
-
-
-        // Check if this should be escalated to a human
-        const complexKeywords = ["speak to agent", "human", "representative", "complaint", "موظف", "شكوى", "ممثل", "تحدث مع شخص"];
-        if (complexKeywords.some(keyword => userInput.toLowerCase().includes(keyword))) {
-            const escalationMsg = lang === "ar"
-                ? "جاري تحويلك إلى موظف خدمة العملاء..."
-                : "Transferring you to a human agent...";
-
-            console.log(chalk.yellow.bold('System: ') + escalationMsg);
-
-            const agentMsg = lang === "ar"
-                ? "مرحبًا، أنا محمد من خدمة العملاء في لين ماركت. كيف يمكنني مساعدتك اليوم؟"
-                : "Hello, this is Mohammed from Lean Market customer service. How may I assist you today?";
-
-            console.log(chalk.magenta.bold('Human Agent: ') + agentMsg);
-
-            const finalResponse = await prompt(chalk.green.bold('You: '));
-
-            const thankYouMsg = lang === "ar"
-                ? "شكراً لرسالتك. سأقوم بفحص هذه المشكلة على الفور وسأعود إليك قريباً!"
-                : "Thank you for your message. I'll look into this right away and get back to you soon!";
-
-            console.log(chalk.magenta.bold('Human Agent: ') + thankYouMsg);
-
-            rl.close();
-            break;
+            console.log('\r' + ' '.repeat(30) + '\r'); // Clear thinking indicator
+            console.log(chalk.red.bold('System: ') + errorMessage);
         }
     }
 }
 
 // Start the chat application
-startChat().catch(console.error);
+startChat().catch(error => {
+    console.error("Fatal error:", error);
+    process.exit(1);
+});
